@@ -29,6 +29,18 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+//! ## Description
+//!
+//! **il2_utils** is a *Rust* utility library designed to provide utility
+//! functionalities to the **InterlockLedger** *Rust* codebase.
+//!
+//! It also provides some of the platform specific code required to access some of
+//! the target OS functionalities when required.
+//!
+//! ## License
+//!
+//! This library is licensed under a **3-Clause BSD license**.
+//!
 pub mod mem;
 pub mod time;
 
