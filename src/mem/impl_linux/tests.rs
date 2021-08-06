@@ -33,8 +33,8 @@ use super::*;
 
 #[test]
 fn test_lock_unlock_mem_core() {
-    let v: Vec<u8> = Vec::with_capacity(16);
-    vec.resize(16, 0);
+    let mut v: Vec<u8> = Vec::with_capacity(16);
+    v.resize(16, 0);
     assert!(lock_mem_core(v.as_ptr() as *const c_void, v.len()));
     assert!(unlock_mem_core(v.as_ptr() as *const c_void, v.len()));
 }
