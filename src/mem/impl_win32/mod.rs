@@ -29,6 +29,8 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+//! This module provides the Windows implementation of the functions
+//! of [`super`].
 #[cfg(test)]
 mod tests;
 
@@ -54,16 +56,31 @@ pub fn lock_supported_core() -> bool {
 //=============================================================================
 // Win32ProtectedValue
 //-----------------------------------------------------------------------------
+/// This is the implementation of the [`ProtectedValue`] for Windows that uses
+/// `CryptProtectMemory()` and `CryptUnprotectMemory()` to protect the values
+/// against memory scans attacks.
 pub struct Win32ProtectedValue {
     protected_data: SecretBytes,
 }
 
 impl Win32ProtectedValue {
-    fn protected_size(data_size: usize) -> usize {
+    /// Returns the size of the buffer required to store the protected value.
+    ///
+    /// Arguments:
+    /// - `data_size`: The size of the value to be protected.
+    ///
+    /// Returns the size of the buffer required to store the protected value.
+    pub fn protected_size(data_size: usize) -> usize {
         let block_size = CRYPTPROTECTMEMORY_BLOCK_SIZE as usize;
         data_size + (block_size - (data_size % block_size))
     }
 
+    /// Creates a new [`Win32ProtectedValue`].
+    ///
+    /// Arguments:
+    /// - `value`: The value to be protected.
+    ///
+    /// Returns the new instance of  [`Win32ProtectedValue`].
     pub fn new(value: &[u8]) -> Self {
         let data_size = Win32ProtectedValue::protected_size(value.len());
         let mut ret = Self {

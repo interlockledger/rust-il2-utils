@@ -29,6 +29,8 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+//! This module provides the portable implementation of the memory manipulation
+//! functions.
 #[cfg(test)]
 mod tests;
 
@@ -44,5 +46,5 @@ pub fn unlock_mem_core(ptr: *const c_void, size: usize) -> bool {
 
 #[inline]
 pub fn lock_supported_core() -> bool {
-    true
+    false
 }

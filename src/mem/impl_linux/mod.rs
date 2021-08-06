@@ -29,6 +29,9 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+//! This module provides the Linux implementation of the memory manipulation
+//! functions.
+
 #[cfg(test)]
 mod tests;
 
@@ -36,7 +39,7 @@ use core::ffi::c_void;
 use libc::{mlock, munlock};
 
 #[inline]
-fn lock_mem_core(ptr: *const c_void, size: usize) -> bool {
+pub fn lock_mem_core(ptr: *const c_void, size: usize) -> bool {
     unsafe {
         match mlock(ptr, size) {
             0 => true,
@@ -46,7 +49,7 @@ fn lock_mem_core(ptr: *const c_void, size: usize) -> bool {
 }
 
 #[inline]
-fn unlock_mem_core(ptr: *const c_void, size: usize) -> bool {
+pub fn unlock_mem_core(ptr: *const c_void, size: usize) -> bool {
     unsafe {
         match munlock(ptr, size) {
             0 => true,

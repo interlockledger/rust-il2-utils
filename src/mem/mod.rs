@@ -33,11 +33,11 @@
 //! in memory. This is useful to prevent critical values from being written into
 //! the the disk by the virtual memory system.
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-mod impl_default;
+pub mod impl_default;
 #[cfg(target_os = "linux")]
-mod impl_linux;
+pub mod impl_linux;
 #[cfg(target_os = "windows")]
-mod impl_win32;
+pub mod impl_win32;
 #[cfg(test)]
 mod tests;
 

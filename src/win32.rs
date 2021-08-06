@@ -29,7 +29,8 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-//! Windows API bindings used by this library.
+//! Windows API bindings used by this library. See [Crate windows](https://docs.rs/windows/) for
+//! further information about this module.
 windows::include_bindings!();
 
 pub use Windows::Win32::System::Memory::{VirtualLock, VirtualUnlock};
