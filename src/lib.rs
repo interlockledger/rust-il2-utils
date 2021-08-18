@@ -41,8 +41,8 @@
 //!
 //! This library is licensed under a **3-Clause BSD license**.
 //!
+pub mod cache;
 pub mod mem;
 pub mod time;
-
 #[cfg(target_os = "windows")]
 pub mod win32;
