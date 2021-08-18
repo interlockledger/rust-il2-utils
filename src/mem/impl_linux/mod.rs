@@ -38,24 +38,16 @@ mod tests;
 use core::ffi::c_void;
 use libc::{mlock, munlock};
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[inline]
 pub fn lock_mem_core(ptr: *const c_void, size: usize) -> bool {
-    unsafe {
-        match mlock(ptr, size) {
-            0 => true,
-            _ => false,
-        }
-    }
+    unsafe { matches!(mlock(ptr, size), 0) }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[inline]
 pub fn unlock_mem_core(ptr: *const c_void, size: usize) -> bool {
-    unsafe {
-        match munlock(ptr, size) {
-            0 => true,
-            _ => false,
-        }
-    }
+    unsafe { matches!(munlock(ptr, size), 0) }
 }
 
 #[inline]
