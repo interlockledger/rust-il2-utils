@@ -151,15 +151,22 @@ fn test_sharedfilereadlockguard_impl() {
 
     let lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
-    let mut target = File::open(&target_file).unwrap();
+    let mut target = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&target_file)
+        .unwrap();
     {
         let mut rlock = SharedFileReadLockGuard {
             file: &mut target,
             _lock: lock.read().unwrap(),
         };
+        // Cannot write
         assert!(lock2.try_write().is_err());
+        // But can read
+        drop(lock2.read().unwrap());
 
-        // Check if it is pointing to the correct file
+        // Check if it is pointing to the correct file by reading it
         let mut buff = Vec::<u8>::new();
         rlock.read_to_end(&mut buff).unwrap();
         let buff_len = buff.len() as u64;
@@ -167,11 +174,76 @@ fn test_sharedfilereadlockguard_impl() {
         let exp = target_file.to_str().unwrap();
         assert_eq!(contents, exp);
 
+        // Test Seek
         let pos = rlock.seek(SeekFrom::End(0)).unwrap();
         assert_eq!(pos, buff_len);
 
+        // Test access to the inner File
         let size = rlock.file().metadata().unwrap().len() as u64;
         assert_eq!(size, buff_len);
+    }
+    let l = lock2.try_write().unwrap();
+    drop(l);
+}
+
+//=============================================================================
+// SharedFileWriteLockGuard
+//-----------------------------------------------------------------------------
+#[test]
+fn test_sharedfilewritelockguard_impl() {
+    let lock_file = get_test_file("target.lock");
+    create_test_file(lock_file.as_os_str());
+    let target_file = get_test_file("target");
+    create_test_file(target_file.as_os_str());
+
+    let mut lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
+    let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
+    let mut target = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&target_file)
+        .unwrap();
+    {
+        let mut rwlock = SharedFileWriteLockGuard {
+            file: &mut target,
+            _lock: lock.write().unwrap(),
+        };
+        // Cannot read nor write
+        assert!(lock2.try_write().is_err());
+        drop(lock2.try_read().is_err());
+
+        // Check if it is pointing to the correct file by reading it
+        let mut buff = Vec::<u8>::new();
+        rwlock.read_to_end(&mut buff).unwrap();
+        let buff_len = buff.len() as u64;
+        let contents = String::from_utf8(buff).unwrap();
+        let exp = target_file.to_str().unwrap();
+        assert_eq!(contents, exp);
+
+        // Test Seek
+        let pos = rwlock.seek(SeekFrom::End(0)).unwrap();
+        assert_eq!(pos, buff_len);
+
+        // Test access to the inner File
+        let size = rwlock.file().metadata().unwrap().len() as u64;
+        assert_eq!(size, buff_len);
+
+        let size = rwlock.mut_file().metadata().unwrap().len() as u64;
+        assert_eq!(size, buff_len);
+
+        // Test if it can write to it
+        rwlock.mut_file().set_len(0).unwrap();
+        let size = rwlock.file().metadata().unwrap().len() as u64;
+        assert_eq!(size, 0);
+
+        let sample: [u8; 4] = [1, 2, 3, 4];
+        rwlock.seek(SeekFrom::Start(0)).unwrap();
+        rwlock.write_all(&sample).unwrap();
+
+        rwlock.seek(SeekFrom::Start(0)).unwrap();
+        let mut buff = Vec::<u8>::new();
+        rwlock.read_to_end(&mut buff).unwrap();
+        assert_eq!(buff.as_slice(), &sample);
     }
     let l = lock2.try_write().unwrap();
     drop(l);

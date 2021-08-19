@@ -161,7 +161,7 @@ impl<'a> Seek for SharedFileReadLockGuard<'a> {
 }
 
 //=============================================================================
-// SharedFileReadWriteGuard
+// SharedFileWriteLockGuard
 //-----------------------------------------------------------------------------
 /// An RAII implementation of an “advisory lock” of a exclusive read and write
 /// to the protected file. When this structure is dropped (falls out of scope),
@@ -172,12 +172,12 @@ impl<'a> Seek for SharedFileReadLockGuard<'a> {
 /// grants a mutable access to the protecte file instance.
 ///
 /// See [`SharedFile`] for further details about how it works.
-pub struct SharedFileReadWriteGuard<'a> {
+pub struct SharedFileWriteLockGuard<'a> {
     file: &'a mut File,
     _lock: fd_lock::RwLockWriteGuard<'a, File>,
 }
 
-impl<'a> SharedFileReadWriteGuard<'a> {
+impl<'a> SharedFileWriteLockGuard<'a> {
     /// Returns a reference to the inner file.
     pub fn file(&self) -> &File {
         self.file
@@ -189,13 +189,13 @@ impl<'a> SharedFileReadWriteGuard<'a> {
     }
 }
 
-impl<'a> Read for SharedFileReadWriteGuard<'a> {
+impl<'a> Read for SharedFileWriteLockGuard<'a> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         self.file.read(buf)
     }
 }
 
-impl<'a> Write for SharedFileReadWriteGuard<'a> {
+impl<'a> Write for SharedFileWriteLockGuard<'a> {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         self.file.write(buf)
     }
@@ -204,7 +204,7 @@ impl<'a> Write for SharedFileReadWriteGuard<'a> {
     }
 }
 
-impl<'a> Seek for SharedFileReadWriteGuard<'a> {
+impl<'a> Seek for SharedFileWriteLockGuard<'a> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
         self.file.seek(pos)
     }
@@ -289,8 +289,8 @@ impl SharedFile {
     }
 
     /// Locks the file for exclusive write.
-    pub fn write(&mut self) -> Result<SharedFileReadWriteGuard<'_>> {
-        Ok(SharedFileReadWriteGuard {
+    pub fn write(&mut self) -> Result<SharedFileWriteLockGuard<'_>> {
+        Ok(SharedFileWriteLockGuard {
             _lock: self.lock.write()?,
             file: &mut self.file,
         })
