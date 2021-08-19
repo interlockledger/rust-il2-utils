@@ -9,6 +9,8 @@ chrono = "0.4.19"
 rand = {version = "0.7.3", features = ["std", "getrandom"]}
 # Secure cleanup for byte arrays
 zeroize = "1.3.0"
+# File locking
+fd-lock = "3.0.0"
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.18.0"
