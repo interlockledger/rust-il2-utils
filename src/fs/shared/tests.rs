@@ -248,3 +248,83 @@ fn test_sharedfilewritelockguard_impl() {
     let l = lock2.try_write().unwrap();
     drop(l);
 }
+
+//=============================================================================
+// SharedFile
+//-----------------------------------------------------------------------------
+#[test]
+fn test_sharedfile_impl() {
+    // This test ends up testing all constructors because
+    // new() calls with_options(),
+    // with_options() calls with_option_builder() and
+    // with_option_builder() calls with_option_lock_file().
+    //
+    // Furthermore, it also tests read(), try_read(), write() and try_write() as
+    // well in a concurrent scenario with at least to SharedFile instances
+    // pointing to the same file.
+    let dummy_content: &'static str = "123456";
+    let test_file = get_test_file("protected");
+    let test_file_path = Path::new(&test_file);
+    let lock_file_builder = DefaultSharedFileLockNameBuilder;
+    let test_file_lock = lock_file_builder
+        .create_lock_file_path(test_file_path)
+        .unwrap();
+    let test_file_lock_path = Path::new(&test_file_lock);
+
+    // Cleanup - No files should exist
+    if test_file_lock_path.exists() {
+        std::fs::remove_file(test_file_lock_path).unwrap();
+    }
+    if test_file_path.exists() {
+        std::fs::remove_file(test_file_path).unwrap();
+    }
+
+    // Create the first from scratch
+    let mut shared1 = SharedFile::new(test_file_path).unwrap();
+    // Create the second just to confirm the operations
+    let mut shared2 = SharedFile::new(test_file_path).unwrap();
+
+    // Testing writing
+    let mut write1 = shared1.write().unwrap();
+    write1.write_all(dummy_content.as_bytes()).unwrap();
+    assert!(shared2.try_read().is_err());
+    assert!(shared2.try_write().is_err());
+
+    // Test seek
+    assert_eq!(write1.seek(SeekFrom::Start(0)).unwrap(), 0);
+    write1.flush().unwrap();
+    drop(write1);
+
+    // Test reading from the other file
+    let mut read2 = shared2.read().unwrap();
+    let mut buff = Vec::<u8>::new();
+    read2.read_to_end(&mut buff).unwrap();
+    assert_eq!(dummy_content.as_bytes(), buff.as_slice());
+
+    // Test concurrent read with try_read()
+    assert!(shared1.try_write().is_err());
+    let mut read1 = shared1.try_read().unwrap();
+    let mut buff = Vec::<u8>::new();
+    read1.read_to_end(&mut buff).unwrap();
+    assert_eq!(dummy_content.as_bytes(), buff.as_slice());
+    drop(read1);
+    drop(read2);
+
+    // Test write from 2 using try_write()
+    let write2 = shared2.try_write().unwrap();
+    assert!(shared1.try_write().is_err());
+    assert!(shared1.try_read().is_err());
+    drop(write2);
+}
+
+#[test]
+fn test_sharedfile_default_options() {
+    let options = SharedFile::default_options();
+    let mut exp_options = OpenOptions::new();
+    exp_options.read(true).write(true).create(true);
+    // I'll compare the contents of both options using debug as it has
+    // access to the internal fields. Furthermore, the debug strings should
+    // be equal if the objects are instantiated in the same way. Furthermore,
+    // I think it will
+    assert_eq!(format!("{:?}", options), format!("{:?}", exp_options));
+}

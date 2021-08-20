@@ -73,7 +73,7 @@ pub trait SharedFileLockNameBuilder {
         }
     }
 
-    /// Returns the lock directory. It is used by [`create_lock_file_path()`] to
+    /// Returns the lock directory. It is used by [`Self::create_lock_file_path()`] to
     /// compose the lock file name.
     ///
     /// By default it is the same directory of the protected file.
@@ -89,7 +89,7 @@ pub trait SharedFileLockNameBuilder {
     }
 
     /// Creates the lock file name based on the original file name. It is used by
-    /// [`create_lock_file_path()`] to compose the lock file name.
+    /// [`Self::create_lock_file_path()`] to compose the lock file name.
     ///
     /// Arguments:
     /// - `file_name`: The name of the file that will be protected;
@@ -222,6 +222,20 @@ impl<'a> Seek for SharedFileWriteLockGuard<'a> {
 ///
 /// The protected file is always opened with shared read and write and create
 /// options.
+///
+/// ## Locking the same file in multiple threads
+///
+/// It is very important to notice that this struct is not thread safe and must
+/// be protected by a Mutex whenever necessary. It happens because the file
+/// offset pointer cannot be safely shared among multiple threads even for
+/// read operations. Unfortunately, the use of the mutex or other sync
+/// mechanisms will lead to the serialization of both read and write locks
+/// inside the same application.
+///
+/// Because of that, it is recommended to create multiple instances of this
+/// struct pointing to the same file. The access control will be guaranteed
+/// by the use of the lock file instead of the traditional thread sync
+/// mechanisms.
 pub struct SharedFile {
     lock: fd_lock::RwLock<File>,
     file: File,
@@ -231,56 +245,78 @@ impl SharedFile {
     /// Creates a new `SharedFile`. The name of the lock file will be determine
     /// automatically based on the name of the original file.
     ///
+    /// The shared file is opened with the [`Self::default_options()`].
+    ///
     /// Arguments:
     /// - `file`: The file to be protected;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
     pub fn new(file: &Path) -> Result<Self> {
         let options = Self::default_options();
         Self::with_options(file, &options)
     }
 
+    /// Creates a new `SharedFile`. The name of the lock file will be determine
+    /// automatically based on the name of the original file.
+    ///
+    /// Arguments:
+    /// - `file`: The file to be protected;    
+    /// - `options`: [`OpenOptions`] used to open the file;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
     pub fn with_options(file: &Path, options: &OpenOptions) -> Result<Self> {
         let lock_file_builder = DefaultSharedFileLockNameBuilder;
         Self::with_option_builder(file, options, &lock_file_builder)
     }
 
-    /// Creates a new `SharedFile` using an existing [`File`] and the specified
-    /// lock file.
+    /// Creates a new `SharedFile`. The name of the lock file will be determine
+    /// by the specified [`SharedFileLockNameBuilder`].
     ///
     /// Arguments:
-    /// - `file`: The existing file handler;
-    /// - `lock_file`: The lock file name;
+    /// - `file`: The file to be protected;
+    /// - `options`: [`OpenOptions`] used to open the file;
+    /// - `lock_file_builder`: The lock file builder to use;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
     pub fn with_option_builder(
         file: &Path,
         options: &OpenOptions,
         lock_file_builder: &dyn SharedFileLockNameBuilder,
     ) -> Result<Self> {
+        let lock_file = lock_file_builder.create_lock_file_path(file)?;
+        Self::with_option_lock_file(file, options, Path::new(lock_file.as_os_str()))
+    }
+
+    /// Creates a new `SharedFile`.
+    ///
+    /// Arguments:
+    /// - `file`: The file to be protected;
+    /// - `options`: [`OpenOptions`] used to open the file;
+    /// - `lock_file`: The lock file to use;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
+    pub fn with_option_lock_file(
+        file: &Path,
+        options: &OpenOptions,
+        lock_file: &Path,
+    ) -> Result<Self> {
         Ok(Self {
-            lock: fd_lock::RwLock::new(File::create(
-                lock_file_builder.create_lock_file_path(file)?,
-            )?),
+            lock: fd_lock::RwLock::new(File::create(lock_file)?),
             file: options.open(file)?,
         })
     }
 
-    /// Creates a new `SharedFile` using an existing [`File`] and the specified
-    /// lock file.
-    ///
-    /// Arguments:
-    /// - `file`: The existing file handler;
-    /// - `lock_file`: The lock file name;
-    pub fn with_file(file: File, lock_file: &Path) -> Result<Self> {
-        Ok(Self {
-            lock: fd_lock::RwLock::new(File::create(lock_file)?),
-            file,
-        })
-    }
-
+    /// Returns the default open options used to open the target file. It sets
+    /// read write and create to true.
     pub fn default_options() -> OpenOptions {
         let mut options = OpenOptions::new();
         options.read(true).write(true).create(true);
         options
     }
+
     /// Locks the file for shared read.
+    ///
+    /// Returns read lock that grants access to the file.
     pub fn read(&mut self) -> Result<SharedFileReadLockGuard<'_>> {
         Ok(SharedFileReadLockGuard {
             _lock: self.lock.read()?,
@@ -288,10 +324,34 @@ impl SharedFile {
         })
     }
 
-    /// Locks the file for exclusive write.
+    /// Locks the file for exclusive write and read
+    ///
+    /// Returns read/write lock that grants access to the file.
     pub fn write(&mut self) -> Result<SharedFileWriteLockGuard<'_>> {
         Ok(SharedFileWriteLockGuard {
             _lock: self.lock.write()?,
+            file: &mut self.file,
+        })
+    }
+
+    /// Attempts to locks the file for shared read. It fails without waiting if
+    /// the lock cannot be acquired.
+    ///
+    /// Returns read lock that grants access to the file.
+    pub fn try_read(&mut self) -> Result<SharedFileReadLockGuard<'_>> {
+        Ok(SharedFileReadLockGuard {
+            _lock: self.lock.try_read()?,
+            file: &mut self.file,
+        })
+    }
+
+    /// Attempts to acquire the file lock for exclusive write and read. It fails
+    /// without waiting if the lock cannot be acquired.
+    ///
+    /// Returns read/write lock that grants access to the file.
+    pub fn try_write(&mut self) -> Result<SharedFileWriteLockGuard<'_>> {
+        Ok(SharedFileWriteLockGuard {
+            _lock: self.lock.try_write()?,
             file: &mut self.file,
         })
     }
