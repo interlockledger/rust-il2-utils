@@ -32,7 +32,6 @@
 use super::*;
 use std::ffi::{OsStr, OsString};
 use std::fs::{write, DirBuilder, File, OpenOptions};
-use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
 
 const TEST_DIR: &'static str = "tmp";
