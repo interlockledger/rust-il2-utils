@@ -205,12 +205,9 @@ impl<K: Eq + Hash + Copy + Send + Sync, V: Send + Sync> SimpleCacheEngine<K, V> 
                 oldest = v.counter()
             }
         }
-        match key {
-            Some(k) => {
-                self.map.remove(&k);
-            }
-            None => (),
-        };
+        if let Some(k) = key {
+            self.map.remove(&k);
+        }
     }
 }
 
