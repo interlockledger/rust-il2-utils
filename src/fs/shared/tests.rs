@@ -119,7 +119,7 @@ fn test_defaultsharedfilelocknamebuilder_namebuilder_create_lock_file_name() {
 fn test_sharedfilereadlockguard_impl() {
     let test_dir = TestDirUtils::new().unwrap();
     let lock_file = test_dir.create_test_file("target.lock").unwrap();
-    let target_file = test_dir.create_test_file("target.lock").unwrap();
+    let target_file = test_dir.create_test_file("target").unwrap();
 
     let lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
