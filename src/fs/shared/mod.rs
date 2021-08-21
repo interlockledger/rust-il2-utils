@@ -424,7 +424,7 @@ impl SharedDirectory {
     /// Note from the author: I tried other variants of the above string but
     /// they where discarded because the end result were not suitable to be
     /// proper file names.
-    const DEFAULT_LOCK_FILE_NAME: &'static str = ".~yonAOEyQtQXj90nWCzHYJA.lock";
+    pub const DEFAULT_LOCK_FILE_NAME: &'static str = ".~yonAOEyQtQXj90nWCzHYJA.lock";
 
     /// Creates a new `SharedDirectory`. It will create a file inside the protected
     /// directory with the name defined by [`Self::DEFAULT_LOCK_FILE_NAME`] to control
