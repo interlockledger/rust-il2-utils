@@ -40,7 +40,7 @@
 mod tests;
 
 use std::ffi::{OsStr, OsString};
-use std::fs::{File, OpenOptions};
+use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
 
@@ -353,6 +353,191 @@ impl SharedFile {
         Ok(SharedFileWriteLockGuard {
             _lock: self.lock.try_write()?,
             file: &mut self.file,
+        })
+    }
+}
+
+//=============================================================================
+// SharedDirectoryReadLockGuard
+//-----------------------------------------------------------------------------
+/// An RAII implementation of an “advisory lock” of a shared read to the
+/// protected directory. When this structure is dropped (falls out of scope), the
+/// shared read lock is released.
+pub struct SharedDirectoryReadLockGuard<'a> {
+    _lock: fd_lock::RwLockReadGuard<'a, File>,
+}
+
+//=============================================================================
+// SharedDirectoryWriteLockGuard
+//-----------------------------------------------------------------------------
+/// An RAII implementation of an “advisory lock” of a exclusive read and write
+/// to the protected directory. When this structure is dropped (falls out of scope),
+/// the shared read lock is released.
+pub struct SharedDirectoryWriteLockGuard<'a> {
+    _lock: fd_lock::RwLockWriteGuard<'a, File>,
+}
+
+//=============================================================================
+// SharedDirectory
+//-----------------------------------------------------------------------------
+/// This struct implements an “advisory lock” of a directory by using an
+/// auxiliary lock file to control the shared read access to it.
+///
+/// Internally, it uses the crate `fd-lock` to control the access to the lock
+/// file while protecting the access tot the actual file.
+///
+/// ## Locking the same file in multiple threads
+///
+/// It is very important to notice that this struct is not thread safe and must
+/// be protected by a Mutex whenever necessary. It happens because the file
+/// offset pointer cannot be safely shared among multiple threads even for
+/// read operations. Unfortunately, the use of the mutex or other sync
+/// mechanisms will lead to the serialization of both read and write locks
+/// inside the same application.
+///
+/// Because of that, it is recommended to create multiple instances of this
+/// struct pointing to the same file. The access control will be guaranteed
+/// by the use of the lock file instead of the traditional thread sync
+/// mechanisms.
+pub struct SharedDirectory {
+    lock: fd_lock::RwLock<File>,
+    dir_name: OsString,
+}
+
+impl SharedDirectory {
+    /// This constant defines the default name of the file used to control the
+    /// access to the directory.
+    ///
+    /// This name was choosen to be as unlikely as possible in order to avoid
+    /// accidental collisions with existing files. Following the
+    /// nothing-up-my-sleeve number principle, the name of this file is actually
+    /// the **MD5** of the string "SharedDirectory lock file!" encoded in
+    /// **Base64** as defined by **RFC 4648**.
+    ///
+    /// This claim can be checked with the command:
+    ///
+    /// - `printf "SharedDirectory lock file!" | openssl md5 -binary | base64`
+    ///
+    /// While **MD5** is no longer safe to be used as a cryptographic hash
+    /// function, it can be used as a good way to hash values for other purposes.
+    ///
+    /// Note from the author: I tried other variants of the above string but
+    /// they where discarded because the end result were not suitable to be
+    /// proper file names.
+    const DEFAULT_LOCK_FILE_NAME: &'static str = ".~yonAOEyQtQXj90nWCzHYJA.lock";
+
+    /// Creates a new `SharedDirectory`. It will create a file inside the protected
+    /// directory with the name defined by [`Self::DEFAULT_LOCK_FILE_NAME`] to control
+    /// the access to it.
+    ///
+    /// The protected directory will be automatically created it it does not
+    /// exist.
+    ///
+    /// Arguments:
+    /// - `directory`: The directory to be protected;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
+    pub fn new(directory: &Path) -> Result<Self> {
+        Self::with_lock_file_name(directory, Self::DEFAULT_LOCK_FILE_NAME)
+    }
+
+    /// Creates a new `SharedDirectory`.
+    ///
+    /// The protected directory will be automatically created it it does not
+    /// exist.
+    ///
+    /// Arguments:
+    /// - `directory`: The directory to be protected;
+    /// - `lock_file_name`: The lock file name. This file will be created inside the
+    ///   shared directory;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
+    pub fn with_lock_file_name(directory: &Path, lock_file_name: &str) -> Result<Self> {
+        let lock_file_path = directory.join(Path::new(lock_file_name));
+        Self::with_lock_file_path(directory, Path::new(lock_file_path.as_os_str()), true)
+    }
+
+    /// Creates a new `SharedDirectory`.
+    ///
+    /// The protected directory will be automatically created it it does not
+    /// exist.
+    ///
+    /// Arguments:
+    /// - `directory`: The directory to be protected;
+    /// - `lock_file`: The file to be used as the lock. This file will be created
+    ///   if it does not exist;
+    /// - `recursive`: Create the full directory path recursively;
+    ///
+    /// Returns the new instance of an IO error to indicate what went wrong.
+    pub fn with_lock_file_path(
+        directory: &Path,
+        lock_file: &Path,
+        recursive: bool,
+    ) -> Result<Self> {
+        // Check the directory.
+        if !directory.exists() {
+            let mut builder = DirBuilder::new();
+            builder.recursive(recursive);
+            builder.create(directory)?;
+        } else if !directory.is_dir() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("{:?} is not a directory.", directory),
+            ));
+        }
+        // Check the lock file.
+        if lock_file.exists() && !lock_file.is_file() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("{:?} is not a file.", directory),
+            ));
+        }
+        Ok(Self {
+            lock: fd_lock::RwLock::new(File::create(lock_file)?),
+            dir_name: directory.as_os_str().to_os_string(),
+        })
+    }
+
+    /// Returns the path to the protected directory.
+    pub fn directory(&self) -> &Path {
+        Path::new(&self.dir_name)
+    }
+
+    /// Locks the file for shared read.
+    ///
+    /// Returns read lock that grants access to the file.
+    pub fn read(&mut self) -> Result<SharedDirectoryReadLockGuard<'_>> {
+        Ok(SharedDirectoryReadLockGuard {
+            _lock: self.lock.read()?,
+        })
+    }
+
+    /// Locks the file for exclusive write and read
+    ///
+    /// Returns read/write lock that grants access to the file.
+    pub fn write(&mut self) -> Result<SharedDirectoryWriteLockGuard<'_>> {
+        Ok(SharedDirectoryWriteLockGuard {
+            _lock: self.lock.write()?,
+        })
+    }
+
+    /// Attempts to locks the file for shared read. It fails without waiting if
+    /// the lock cannot be acquired.
+    ///
+    /// Returns read lock that grants access to the file.
+    pub fn try_read(&mut self) -> Result<SharedDirectoryReadLockGuard<'_>> {
+        Ok(SharedDirectoryReadLockGuard {
+            _lock: self.lock.try_read()?,
+        })
+    }
+
+    /// Attempts to acquire the file lock for exclusive write and read. It fails
+    /// without waiting if the lock cannot be acquired.
+    ///
+    /// Returns read/write lock that grants access to the file.
+    pub fn try_write(&mut self) -> Result<SharedDirectoryWriteLockGuard<'_>> {
+        Ok(SharedDirectoryWriteLockGuard {
+            _lock: self.lock.try_write()?,
         })
     }
 }

@@ -30,36 +30,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 use super::*;
+use crate::tests::TestDirUtils;
 use std::ffi::{OsStr, OsString};
-use std::fs::{write, DirBuilder, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::path::Path;
-
-const TEST_DIR: &'static str = "tmp";
-
-/// Get the path of a test file. This file will always be
-/// inside the test directory.
-///
-/// This function panics if the test directory does not exist, cannot be
-/// created or is not a directory.
-fn get_test_file(name: &str) -> OsString {
-    let path = Path::new(TEST_DIR);
-    if !path.is_dir() {
-        let builder = DirBuilder::new();
-        builder.create(&path).unwrap();
-    }
-    path.join(name).into_os_string()
-}
-
-fn create_test_file(file_path: &OsStr) {
-    let p = Path::new(&file_path);
-    write(p, file_path.to_str().unwrap().as_bytes()).unwrap()
-}
-
-#[test]
-fn test_get_test_file() {
-    let f = get_test_file("test");
-    println!("{:?}", f);
-}
 
 //=============================================================================
 // SharedFileLockNameBuilder
@@ -143,10 +117,9 @@ fn test_defaultsharedfilelocknamebuilder_namebuilder_create_lock_file_name() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfilereadlockguard_impl() {
-    let lock_file = get_test_file("target.lock");
-    create_test_file(lock_file.as_os_str());
-    let target_file = get_test_file("target");
-    create_test_file(target_file.as_os_str());
+    let test_dir = TestDirUtils::new().unwrap();
+    let lock_file = test_dir.create_test_file("target.lock").unwrap();
+    let target_file = test_dir.create_test_file("target.lock").unwrap();
 
     let lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
@@ -190,10 +163,9 @@ fn test_sharedfilereadlockguard_impl() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfilewritelockguard_impl() {
-    let lock_file = get_test_file("target.lock");
-    create_test_file(lock_file.as_os_str());
-    let target_file = get_test_file("target");
-    create_test_file(target_file.as_os_str());
+    let test_dir = TestDirUtils::new().unwrap();
+    let lock_file = test_dir.create_test_file("target.lock").unwrap();
+    let target_file = test_dir.create_test_file("target").unwrap();
 
     let mut lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
@@ -253,6 +225,8 @@ fn test_sharedfilewritelockguard_impl() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfile_impl() {
+    let test_dir = TestDirUtils::new().unwrap();
+
     // This test ends up testing all constructors because
     // new() calls with_options(),
     // with_options() calls with_option_builder() and
@@ -262,7 +236,7 @@ fn test_sharedfile_impl() {
     // well in a concurrent scenario with at least to SharedFile instances
     // pointing to the same file.
     let dummy_content: &'static str = "123456";
-    let test_file = get_test_file("protected");
+    let test_file = test_dir.get_test_file_path("protected");
     let test_file_path = Path::new(&test_file);
     let lock_file_builder = DefaultSharedFileLockNameBuilder;
     let test_file_lock = lock_file_builder
@@ -326,4 +300,37 @@ fn test_sharedfile_default_options() {
     // be equal if the objects are instantiated in the same way. Furthermore,
     // I think it will
     assert_eq!(format!("{:?}", options), format!("{:?}", exp_options));
+}
+
+//=============================================================================
+// SharedDirectory
+//-----------------------------------------------------------------------------
+
+#[test]
+fn test_shared_directory() {
+    let test_dir = TestDirUtils::new().unwrap();
+    test_dir.reset().unwrap();
+
+    let mut shared1 = SharedDirectory::new(test_dir.test_dir()).unwrap();
+
+    // Ensure that the lock file exists
+    let lock_file = test_dir.get_test_file_path(SharedDirectory::DEFAULT_LOCK_FILE_NAME);
+    let lock_file_path = Path::new(&lock_file);
+    assert!(lock_file_path.is_file());
+
+    let mut shared2 = SharedDirectory::new(test_dir.test_dir()).unwrap();
+
+    // Test write lock from 1 and read from 2
+    let lock1 = shared1.write().unwrap();
+    assert!(shared2.try_read().is_err());
+    drop(lock1);
+
+    // Test read from 2 and write from 1
+    let lock2 = shared2.read().unwrap();
+    assert!(shared1.try_write().is_err());
+    drop(lock2);
+
+    // Write again fom 1
+    let lock1 = shared1.write().unwrap();
+    drop(lock1);
 }
