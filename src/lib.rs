@@ -47,6 +47,3 @@ pub mod mem;
 pub mod time;
 #[cfg(target_os = "windows")]
 pub mod win32;
-
-#[cfg(test)]
-pub mod tests;

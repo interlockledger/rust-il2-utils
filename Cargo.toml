@@ -17,3 +17,6 @@ windows = "0.18.0"
 
 [target.'cfg(windows)'.build-dependencies]
 windows = "0.18.0"
+
+[dev-dependencies]
+il2-test-utils={ git = "https://github.com/interlockledger/rust-il2-test-utils.git" }

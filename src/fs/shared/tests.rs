@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 use super::*;
-use crate::tests::TestDirUtils;
+use il2_test_utils::testdir::TestDirUtils;
 use std::ffi::{OsStr, OsString};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
