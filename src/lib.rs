@@ -45,5 +45,6 @@ pub mod cache;
 pub mod fs;
 pub mod mem;
 pub mod time;
+pub mod vec;
 #[cfg(target_os = "windows")]
 pub mod win32;
