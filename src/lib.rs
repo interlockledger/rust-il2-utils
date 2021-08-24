@@ -44,6 +44,7 @@
 pub mod cache;
 pub mod fs;
 pub mod mem;
+pub mod simple_serialization;
 pub mod time;
 pub mod vec;
 #[cfg(target_os = "windows")]
