@@ -117,9 +117,9 @@ fn test_defaultsharedfilelocknamebuilder_namebuilder_create_lock_file_name() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfilereadlockguard_impl() {
-    let test_dir = TestDirUtils::new().unwrap();
-    let lock_file = test_dir.create_test_file("target.lock").unwrap();
-    let target_file = test_dir.create_test_file("target").unwrap();
+    let test_dir = TestDirUtils::new("test_sharedfilereadlockguard_impl").unwrap();
+    let lock_file = test_dir.create_test_file("target.lock", b"1").unwrap();
+    let target_file = test_dir.create_test_file("target", b"2").unwrap();
 
     let lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
@@ -143,8 +143,7 @@ fn test_sharedfilereadlockguard_impl() {
         rlock.read_to_end(&mut buff).unwrap();
         let buff_len = buff.len() as u64;
         let contents = String::from_utf8(buff).unwrap();
-        let exp = target_file.to_str().unwrap();
-        assert_eq!(contents, exp);
+        assert_eq!(contents, "2");
 
         // Test Seek
         let pos = rlock.seek(SeekFrom::End(0)).unwrap();
@@ -163,9 +162,9 @@ fn test_sharedfilereadlockguard_impl() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfilewritelockguard_impl() {
-    let test_dir = TestDirUtils::new().unwrap();
-    let lock_file = test_dir.create_test_file("target.lock").unwrap();
-    let target_file = test_dir.create_test_file("target").unwrap();
+    let test_dir = TestDirUtils::new("test_sharedfilewritelockguard_impl").unwrap();
+    let lock_file = test_dir.create_test_file("target.lock", b"1").unwrap();
+    let target_file = test_dir.create_test_file("target", b"2").unwrap();
 
     let mut lock = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
     let mut lock2 = fd_lock::RwLock::new(File::open(&lock_file).unwrap());
@@ -188,8 +187,7 @@ fn test_sharedfilewritelockguard_impl() {
         rwlock.read_to_end(&mut buff).unwrap();
         let buff_len = buff.len() as u64;
         let contents = String::from_utf8(buff).unwrap();
-        let exp = target_file.to_str().unwrap();
-        assert_eq!(contents, exp);
+        assert_eq!(contents, "2");
 
         // Test Seek
         let pos = rwlock.seek(SeekFrom::End(0)).unwrap();
@@ -225,7 +223,7 @@ fn test_sharedfilewritelockguard_impl() {
 //-----------------------------------------------------------------------------
 #[test]
 fn test_sharedfile_impl() {
-    let test_dir = TestDirUtils::new().unwrap();
+    let test_dir = TestDirUtils::new("test_sharedfile_impl").unwrap();
 
     // This test ends up testing all constructors because
     // new() calls with_options(),
@@ -308,7 +306,7 @@ fn test_sharedfile_default_options() {
 
 #[test]
 fn test_shared_directory() {
-    let test_dir = TestDirUtils::new().unwrap();
+    let test_dir = TestDirUtils::new("test_shared_directory").unwrap();
     test_dir.reset().unwrap();
 
     let mut shared1 = SharedDirectory::new(test_dir.test_dir()).unwrap();

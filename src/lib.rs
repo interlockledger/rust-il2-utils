@@ -37,6 +37,9 @@
 //! It also provides some of the platform specific code required to access some of
 //! the target OS functionalities when required.
 //!
+//! Visit [creates.io](https://crates.io/crates/il2-utils) for further information
+//! about this library.
+//!
 //! ## License
 //!
 //! This library is licensed under a **3-Clause BSD license**.

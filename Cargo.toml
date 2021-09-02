@@ -1,7 +1,15 @@
 [package]
-name = "il2_utils"
+name = "il2-utils"
 version = "0.1.0"
 edition = "2018"
+description = "InterlockLedger's utility library in Rust."
+authors = ["InterlockLedger Network", "Fabio Jun Takada Chino", "Cesar Luiz Ferracin"]
+homepage = "https://github.com/interlockledger/rust-il2-utils"
+license = "BSD-3-Clause"
+keywords = ["interlockledger", "blockchain"]
+categories = ["cryptography::cryptocurrencies"]
+repository = "https://github.com/interlockledger/rust-il2-utils"
+readme = "README.md"
 
 [dependencies]
 libc = "0.2.98"
@@ -19,4 +27,4 @@ windows = "0.18.0"
 windows = "0.18.0"
 
 [dev-dependencies]
-il2-test-utils={ git = "https://github.com/interlockledger/rust-il2-test-utils.git" }
+il2-test-utils = "0.1.1"
