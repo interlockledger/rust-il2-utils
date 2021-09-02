@@ -284,7 +284,7 @@ impl ByteMaskGenerator {
 ///
 /// Although not enough to provide a long term protection, it should be enough
 /// to make memory scan techniques way more difficult to perform.
-pub trait ProtectedValue {
+pub trait ProtectedValue: Send + Sync {
     /// Returns the protected value as a [`SecretBytes`] instance.
     fn get_secret(&self) -> SecretBytes;
 }
