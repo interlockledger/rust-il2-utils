@@ -1,9 +1,13 @@
 [package]
 name = "il2-utils"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 description = "InterlockLedger's utility library in Rust."
-authors = ["InterlockLedger Network", "Fabio Jun Takada Chino", "Cesar Luiz Ferracin"]
+authors = [
+    "InterlockLedger Network",
+    "Fabio Jun Takada Chino",
+    "Cesar Luiz Ferracin",
+]
 homepage = "https://github.com/interlockledger/rust-il2-utils"
 license = "BSD-3-Clause"
 keywords = ["interlockledger", "blockchain"]
@@ -14,7 +18,7 @@ readme = "README.md"
 [dependencies]
 libc = "0.2.98"
 chrono = "0.4.19"
-rand = {version = "0.7.3", features = ["std", "getrandom"]}
+rand = { version = "0.7.3", features = ["std", "getrandom"] }
 # Secure cleanup for byte arrays
 zeroize = "1.3.0"
 # File locking
