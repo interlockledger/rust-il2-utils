@@ -50,5 +50,3 @@ pub mod mem;
 pub mod simple_serialization;
 pub mod time;
 pub mod vec;
-#[cfg(target_os = "windows")]
-pub mod win32;

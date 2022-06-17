@@ -64,6 +64,7 @@ fn test_sharedfilelocknamebuilder_get_lock_directory() {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_sharedfilelocknamebuilder_create_lock_file_path() {
     let f = DummySharedFileLockNameBuilder;
 
@@ -89,6 +90,36 @@ fn test_sharedfilelocknamebuilder_create_lock_file_path() {
     assert!(f.create_lock_file_path(&file).is_err());
 
     let file = Path::new("/test/..");
+    assert!(f.create_lock_file_path(&file).is_err());
+}
+
+#[test]
+#[cfg(target_os = "windows")]
+fn test_sharedfilelocknamebuilder_create_lock_file_path() {
+    let f = DummySharedFileLockNameBuilder;
+
+    let file = Path::new("name");
+    assert_eq!(
+        f.create_lock_file_path(&file).unwrap(),
+        OsString::from("prefix.name.suffix")
+    );
+
+    let file = Path::new("\\test\\name");
+    assert_eq!(
+        f.create_lock_file_path(&file).unwrap(),
+        OsString::from("\\test\\prefix.name.suffix")
+    );
+
+    let file = Path::new("\\name");
+    assert_eq!(
+        f.create_lock_file_path(&file).unwrap(),
+        OsString::from("\\prefix.name.suffix")
+    );
+
+    let file = Path::new("\\");
+    assert!(f.create_lock_file_path(&file).is_err());
+
+    let file = Path::new("\\test\\..");
     assert!(f.create_lock_file_path(&file).is_err());
 }
 

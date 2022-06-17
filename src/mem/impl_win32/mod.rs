@@ -35,8 +35,12 @@
 mod tests;
 
 use super::{ProtectedValue, SecretBytes};
-use crate::win32::*;
 use core::ffi::c_void;
+use windows::Win32::Security::Cryptography::{
+    CryptProtectMemory, CryptUnprotectMemory, CRYPTPROTECTMEMORY_BLOCK_SIZE,
+    CRYPTPROTECTMEMORY_SAME_PROCESS,
+};
+use windows::Win32::System::Memory::{VirtualLock, VirtualUnlock};
 
 #[inline]
 pub fn lock_mem_core(ptr: *const c_void, size: usize) -> bool {
