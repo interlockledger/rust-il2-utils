@@ -24,3 +24,13 @@ It contains parts of code originally written by **Open Communications Security**
 ## License
 
 This library is licensed under a 3-Clause BSD license.
+
+## Version history
+
+- 0.1.2:
+	- Windows crate updated from 0.18.0 to 0.32.0;
+- 0.1.1:
+	- Small fixes over 0.1.0;
+- 0.1.0:
+	- Initial version;
+
