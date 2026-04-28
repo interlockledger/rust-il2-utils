@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2019-2020, InterlockLedger Network
+ * Copyright (c) 2019-2026, InterlockLedger Network
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,5 +49,6 @@ pub fn nanoseconds_to_microseconds(nanos: i64) -> i64 {
 #[inline]
 pub fn get_timestamp() -> i64 {
     let now = chrono::Utc::now();
-    nanoseconds_to_microseconds(now.timestamp_nanos())
+    // Unwrap should be safe until 2262-04-11T23:47:16.854775807
+    nanoseconds_to_microseconds(now.timestamp_nanos_opt().unwrap())
 }

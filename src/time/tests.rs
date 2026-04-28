@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2019-2020, InterlockLedger Network
+ * Copyright (c) 2019-2026, InterlockLedger Network
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
